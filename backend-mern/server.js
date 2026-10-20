@@ -1,14 +1,18 @@
-
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
+const scheduleRoutes = require('./routes/scheduleRoutes');
+const {
+  startMaintenanceReminderScheduler
+} = require('./services/maintenanceReminder');
 require('dotenv').config();
 
 const equipmentRoutes = require('./routes/equipmentRoutes');
 const authRoutes = require('./routes/authRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
+const aiRoutes = require('./routes/aiRoutes');
 const { requireAuth } = require('./middleware/authMiddleware');
 
 const app = express();
@@ -82,9 +86,13 @@ app.use('/api/auth', authRoutes);
 
 // Protected equipment routes
 app.use('/api/equipment', requireAuth, equipmentRoutes);
+app.use('/api/schedules', requireAuth, scheduleRoutes);
 
 // Protected maintenance request routes
 app.use('/api/maintenance', requireAuth, maintenanceRoutes);
+
+// Protected AI assessment routes
+app.use('/api/ai', requireAuth, aiRoutes);
 
 // Unknown route handler
 app.use((req, res) => {
@@ -111,7 +119,10 @@ async function startServer() {
   try {
     await mongoose.connect(mongoUrl);
 
-    console.log('MongoDB connected successfully');
+console.log('MongoDB connected successfully');
+
+// Start daily maintenance email reminders.
+startMaintenanceReminderScheduler();
 
     const server = app.listen(PORT, () => {
       console.log(

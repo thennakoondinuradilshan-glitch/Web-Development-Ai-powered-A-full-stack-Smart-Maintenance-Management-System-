@@ -1,0 +1,360 @@
+
+const express = require('express');
+const mongoose = require('mongoose');
+
+const MaintenanceSchedule = require('../models/MaintenanceSchedule');
+const Equipment = require('../models/Equipment');
+const { requireRole } = require('../middleware/authMiddleware');
+
+const router = express.Router();
+
+const FREQUENCIES = [
+  'ONCE',
+  'WEEKLY',
+  'MONTHLY',
+  'QUARTERLY',
+  'YEARLY'
+];
+
+const STATUSES = [
+  'SCHEDULED',
+  'COMPLETED',
+  'CANCELLED'
+];
+
+// GET /api/schedules
+// Any authenticated user can view schedules.
+router.get('/', async (req, res) => {
+  try {
+    const schedules = await MaintenanceSchedule.find()
+      .populate('equipment', 'name location status')
+      .sort({ dueDate: 1 });
+
+    return res.json({ schedules });
+  } catch (error) {
+    console.error('Load schedules error:', error.message);
+
+    return res.status(500).json({
+      message: 'Failed to load maintenance schedules'
+    });
+  }
+});
+
+// GET /api/schedules/alerts
+// Return overdue, due-today and upcoming maintenance schedules.
+router.get('/alerts', async (req, res) => {
+  try {
+    const now = new Date();
+
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const startOfTomorrow = new Date(startOfToday);
+    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
+
+    const nextSevenDays = new Date(startOfTomorrow);
+    nextSevenDays.setDate(nextSevenDays.getDate() + 7);
+
+    const baseQuery = {
+      status: 'SCHEDULED'
+    };
+
+    const [overdue, dueToday, upcoming] = await Promise.all([
+      MaintenanceSchedule.find({
+        ...baseQuery,
+        dueDate: { $lt: startOfToday }
+      })
+        .populate('equipment', 'name location status')
+        .sort({ dueDate: 1 }),
+
+      MaintenanceSchedule.find({
+        ...baseQuery,
+        dueDate: {
+          $gte: startOfToday,
+          $lt: startOfTomorrow
+        }
+      })
+        .populate('equipment', 'name location status')
+        .sort({ dueDate: 1 }),
+
+      MaintenanceSchedule.find({
+        ...baseQuery,
+        dueDate: {
+          $gte: startOfTomorrow,
+          $lt: nextSevenDays
+        }
+      })
+        .populate('equipment', 'name location status')
+        .sort({ dueDate: 1 })
+    ]);
+
+    return res.json({
+      success: true,
+      summary: {
+        overdue: overdue.length,
+        dueToday: dueToday.length,
+        upcoming: upcoming.length,
+        total: overdue.length + dueToday.length + upcoming.length
+      },
+      alerts: {
+        overdue,
+        dueToday,
+        upcoming
+      },
+      checkedAt: now
+    });
+  } catch (error) {
+    console.error('Maintenance alerts error:', error.message);
+
+    return res.status(500).json({
+      message: 'Failed to load maintenance alerts'
+    });
+  }
+});
+
+// POST /api/schedules
+// Only admins can create schedules.
+router.post('/', requireRole('ADMIN'), async (req, res) => {
+  try {
+    const {
+      title,
+      description = '',
+      equipment,
+      dueDate,
+      frequency = 'ONCE'
+    } = req.body;
+
+    if (
+      typeof title !== 'string' ||
+      !title.trim() ||
+      !equipment ||
+      !mongoose.isValidObjectId(equipment) ||
+      !dueDate
+    ) {
+      return res.status(400).json({
+        message: 'Title, valid equipment and due date are required'
+      });
+    }
+
+    if (
+      description !== undefined &&
+      typeof description !== 'string'
+    ) {
+      return res.status(400).json({
+        message: 'Description must be text'
+      });
+    }
+
+    if (!FREQUENCIES.includes(frequency)) {
+      return res.status(400).json({
+        message: 'Invalid maintenance frequency'
+      });
+    }
+
+    const parsedDate = new Date(dueDate);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return res.status(400).json({
+        message: 'Invalid due date'
+      });
+    }
+
+    const equipmentExists = await Equipment.exists({
+      _id: equipment
+    });
+
+    if (!equipmentExists) {
+      return res.status(404).json({
+        message: 'Equipment not found'
+      });
+    }
+
+    const schedule = await MaintenanceSchedule.create({
+      title: title.trim(),
+      description: description.trim(),
+      equipment,
+      dueDate: parsedDate,
+      frequency
+    });
+
+    await schedule.populate(
+      'equipment',
+      'name location status'
+    );
+
+    return res.status(201).json({
+      message: 'Maintenance schedule created successfully',
+      schedule
+    });
+  } catch (error) {
+    console.error('Create schedule error:', error.message);
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: error.message
+      });
+    }
+
+    return res.status(500).json({
+      message: 'Failed to create maintenance schedule'
+    });
+  }
+});
+// PATCH /api/schedules/:id/status
+// Only admins can change schedule status.
+router.patch(
+  '/:id/status',
+  requireRole('ADMIN'),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!mongoose.isValidObjectId(id)) {
+        return res.status(400).json({
+          message: 'Invalid schedule ID'
+        });
+      }
+
+      if (!STATUSES.includes(status)) {
+        return res.status(400).json({
+          message: 'Invalid schedule status'
+        });
+      }
+
+      let currentSchedule = await MaintenanceSchedule.findById(id);
+
+      if (!currentSchedule) {
+        return res.status(404).json({
+          message: 'Maintenance schedule not found'
+        });
+      }
+
+      // Avoid creating duplicate future schedules.
+      if (
+        status === 'COMPLETED' &&
+        currentSchedule.status !== 'COMPLETED' &&
+        currentSchedule.frequency !== 'ONCE' &&
+        !currentSchedule.nextScheduleCreated
+      ) {
+        // Claim the recurring rollover atomically so concurrent completion
+        // requests cannot create duplicate future schedules.
+        const claimedSchedule = await MaintenanceSchedule.findOneAndUpdate(
+          {
+            _id: currentSchedule._id,
+            status: { $ne: 'COMPLETED' },
+            nextScheduleCreated: { $ne: true }
+          },
+          { $set: { nextScheduleCreated: true } },
+          { new: true }
+        );
+
+        if (claimedSchedule) {
+          currentSchedule = claimedSchedule;
+          const nextDueDate = new Date(currentSchedule.dueDate);
+
+          switch (currentSchedule.frequency) {
+            case 'WEEKLY':
+              nextDueDate.setDate(nextDueDate.getDate() + 7);
+              break;
+
+            case 'MONTHLY':
+              nextDueDate.setMonth(nextDueDate.getMonth() + 1);
+              break;
+
+            case 'QUARTERLY':
+              nextDueDate.setMonth(nextDueDate.getMonth() + 3);
+              break;
+
+            case 'YEARLY':
+              nextDueDate.setFullYear(nextDueDate.getFullYear() + 1);
+              break;
+          }
+
+          try {
+            await MaintenanceSchedule.create({
+              title: currentSchedule.title,
+              description: currentSchedule.description,
+              equipment: currentSchedule.equipment,
+              dueDate: nextDueDate,
+              frequency: currentSchedule.frequency,
+              status: 'SCHEDULED',
+              parentSchedule: currentSchedule._id
+            });
+          } catch (error) {
+            await MaintenanceSchedule.updateOne(
+              { _id: currentSchedule._id },
+              { $set: { nextScheduleCreated: false } }
+            );
+            throw error;
+          }
+        } else {
+          // Another request already claimed the rollover. Refresh the
+          // document before applying the requested status so the claim is
+          // not accidentally overwritten.
+          currentSchedule = await MaintenanceSchedule.findById(id) || currentSchedule;
+        }
+
+        currentSchedule.status = status;
+        await currentSchedule.save();
+      } else {
+        currentSchedule.status = status;
+        await currentSchedule.save();
+      }
+
+      await currentSchedule.populate(
+        'equipment',
+        'name location status'
+      );
+
+      return res.json({
+        message: 'Maintenance schedule updated successfully',
+        schedule: currentSchedule
+      });
+    } catch (error) {
+      console.error('Update schedule error:', error.message);
+
+      return res.status(500).json({
+        message: 'Failed to update maintenance schedule'
+      });
+    }
+  }
+);
+
+// DELETE /api/schedules/:id
+// Only admins can delete schedules.
+router.delete(
+  '/:id',
+  requireRole('ADMIN'),
+  async (req, res) => {
+    try {
+      if (!mongoose.isValidObjectId(req.params.id)) {
+        return res.status(400).json({
+          message: 'Invalid schedule ID'
+        });
+      }
+
+      const schedule = await MaintenanceSchedule.findByIdAndDelete(
+        req.params.id
+      );
+
+      if (!schedule) {
+        return res.status(404).json({
+          message: 'Maintenance schedule not found'
+        });
+      }
+
+      return res.json({
+        message: 'Maintenance schedule deleted successfully'
+      });
+    } catch (error) {
+      console.error('Delete schedule error:', error.message);
+
+      return res.status(500).json({
+        message: 'Failed to delete maintenance schedule'
+      });
+    }
+  }
+);
+
+module.exports = router;

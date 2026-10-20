@@ -1,36 +1,335 @@
-
+import AIRiskOverview from './AIRiskOverview';
+import AIMaintenanceAdvisor from './AIMaintenanceAdvisor';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
+import './Dashboard.css';
+
+const C = {
+  navy: '#14243b',
+  blue: '#7c3aed',
+  green: '#15803d',
+  orange: '#c2410c',
+  purple: '#7c3aed',
+  text: '#172033',
+  muted: '#64748b',
+  border: '#e4eaf2',
+  background: '#f4f7fb',
+  white: '#ffffff',
+  red: '#dc2626'
+};
+
+const panel = {
+  background: C.white,
+  border: `1px solid ${C.border}`,
+  borderRadius: 16,
+  padding: 22,
+  boxShadow: '0 4px 18px rgba(24,44,78,0.04)',
+  minWidth: 0
+};
+
+const button = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  padding: '11px 16px',
+  background: C.blue,
+  color: '#fff',
+  border: 'none',
+  borderRadius: 9,
+  fontSize: 13,
+  fontWeight: 700,
+  textDecoration: 'none',
+  cursor: 'pointer'
+};
+
+const heading = {
+  fontSize: 17,
+  fontWeight: 800,
+  color: C.text,
+  margin: 0
+};
+
+const thStyle = {
+  padding: '13px 12px',
+  textAlign: 'left',
+  borderBottom: `1px solid ${C.border}`,
+  color: C.muted,
+  fontSize: 10,
+  letterSpacing: 0.6,
+  fontWeight: 800,
+  textTransform: 'uppercase',
+  whiteSpace: 'nowrap'
+};
+
+const tdStyle = {
+  padding: '15px 12px',
+  textAlign: 'left',
+  borderBottom: '1px solid #edf1f6',
+  color: '#334155',
+  fontSize: 12,
+  verticalAlign: 'middle'
+};
+
+function formatDate(value) {
+  if (!value) return '—';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return '—';
+
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
+function StatusBadge({ status }) {
+  const value = (status || 'UNKNOWN').toUpperCase();
+
+  const palette = {
+    ACTIVE: ['#166534', '#dcfce7'],
+    UNDER_MAINTENANCE: ['#9a3412', '#ffedd5'],
+    PENDING: ['#92400e', '#fef3c7'],
+    IN_PROGRESS: ['#6d28d9', '#f3eefe'],
+    COMPLETED: ['#166534', '#dcfce7'],
+    UNKNOWN: ['#475569', '#f1f5f9']
+  };
+
+  const [color, background] = palette[value] || palette.UNKNOWN;
+
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '6px 10px',
+        borderRadius: 30,
+        background,
+        color,
+        fontSize: 10,
+        fontWeight: 800,
+        whiteSpace: 'nowrap'
+      }}
+    >
+      <span
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          background: color
+        }}
+      />
+      {value.replaceAll('_', ' ')}
+    </span>
+  );
+}
+
+function MetricCard({
+  title,
+  value,
+  description,
+  icon,
+  accent,
+  background,
+  to
+}) {
+  const content = (
+    <article
+      style={{
+        ...panel,
+        height: '100%',
+        transition: 'box-shadow 0.2s ease'
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          marginBottom: 20
+        }}
+      >
+        <div
+          style={{
+            width: 46,
+            height: 46,
+            borderRadius: 13,
+            background,
+            color: accent,
+            display: 'grid',
+            placeItems: 'center',
+            fontSize: 23,
+            fontWeight: 800
+          }}
+        >
+          {icon}
+        </div>
+
+        <span style={{ color: '#94a3b8', fontSize: 20 }}>↗</span>
+      </div>
+
+      <p
+        style={{
+          color: C.muted,
+          fontSize: 13,
+          fontWeight: 600,
+          margin: '0 0 9px'
+        }}
+      >
+        {title}
+      </p>
+
+      <p
+        style={{
+          color: C.text,
+          fontSize: 34,
+          fontWeight: 800,
+          letterSpacing: -1.2,
+          margin: '0 0 9px',
+          lineHeight: 1.2
+        }}
+      >
+        {value}
+      </p>
+
+      <p
+        style={{
+          color: C.muted,
+          fontSize: 12,
+          margin: 0,
+          lineHeight: 1.6
+        }}
+      >
+        {description}
+      </p>
+    </article>
+  );
+
+  return to ? (
+    <Link
+      to={to}
+      style={{
+        textDecoration: 'none',
+        color: 'inherit',
+        display: 'block',
+        minWidth: 0
+      }}
+    >
+      {content}
+    </Link>
+  ) : content;
+}
+
+function ProgressBar({ value, color }) {
+  const percentage = Math.max(0, Math.min(100, value));
+
+  return (
+    <div
+      style={{
+        height: 9,
+        width: '100%',
+        borderRadius: 20,
+        background: '#e9eef6',
+        overflow: 'hidden'
+      }}
+    >
+      <div
+        style={{
+          height: '100%',
+          width: `${percentage}%`,
+          background: color,
+          borderRadius: 20,
+          transition: 'width 0.3s ease'
+        }}
+      />
+    </div>
+  );
+}
 
 function Dashboard() {
   const [equipment, setEquipment] = useState([]);
+  const [requests, setRequests] = useState([]);
+const [maintenanceAlerts, setMaintenanceAlerts] = useState({
+  overdue: [],
+  dueToday: [],
+  upcoming: []
+});
+
+const [alertsLoading, setAlertsLoading] = useState(true);
+const [alertsError, setAlertsError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState([]);
 
   const loadDashboard = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    setErrors([]);
+
     try {
-      if (isRefresh) {
-        setRefreshing(true);
+      const results = await Promise.allSettled([
+        api.get('/equipment'),
+        api.get('/maintenance')
+      ]);
+
+      const nextErrors = [];
+
+      if (results[0].status === 'fulfilled') {
+        const data = results[0].value.data;
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.equipment)
+            ? data.equipment
+            : null;
+
+        if (list) {
+          setEquipment(list);
+        } else {
+          setEquipment([]);
+          nextErrors.push('Unexpected equipment data format.');
+        }
       } else {
-        setLoading(true);
+        setEquipment([]);
+        nextErrors.push(
+          results[0].reason?.response?.data?.message ||
+          'Could not load equipment.'
+        );
       }
 
-      setError('');
+      if (results[1].status === 'fulfilled') {
+        const data = results[1].value.data;
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.requests)
+            ? data.requests
+            : null;
 
-      const response = await api.get('/equipment');
-
-      if (!Array.isArray(response.data)) {
-        throw new Error('Unexpected equipment data format');
+        if (list) {
+          setRequests(list);
+        } else {
+          setRequests([]);
+          nextErrors.push('Unexpected maintenance data format.');
+        }
+      } else {
+        setRequests([]);
+        nextErrors.push(
+          results[1].reason?.response?.data?.message ||
+          'Could not load maintenance requests.'
+        );
       }
 
-      setEquipment(response.data);
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-        'Dashboard data load කරන්න බැහැ. Backend එක පරීක්ෂා කරන්න.'
-      );
+      setErrors(nextErrors);
+    } catch {
+      setErrors(['Unable to load dashboard data. Please try again.']);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -40,7 +339,45 @@ function Dashboard() {
   useEffect(() => {
     loadDashboard();
   }, [loadDashboard]);
+ useEffect(() => {
+  let cancelled = false;
 
+  async function loadMaintenanceAlerts() {
+    try {
+      setAlertsLoading(true);
+      setAlertsError('');
+
+      const response = await api.get('/schedules/alerts');
+
+      if (!cancelled) {
+        setMaintenanceAlerts(
+          response.data.alerts || {
+            overdue: [],
+            dueToday: [],
+            upcoming: []
+          }
+        );
+      }
+    } catch (error) {
+      if (!cancelled) {
+        setAlertsError(
+          error.response?.data?.message ||
+          'Unable to load maintenance alerts.'
+        );
+      }
+    } finally {
+      if (!cancelled) {
+        setAlertsLoading(false);
+      }
+    }
+  }
+
+  loadMaintenanceAlerts();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
   const totalEquipment = equipment.length;
 
   const activeEquipment = equipment.filter(
@@ -51,324 +388,1250 @@ function Dashboard() {
     item => item.status === 'UNDER_MAINTENANCE'
   ).length;
 
-  const cards = [
+  const pendingRequests = requests.filter(
+    item => item.status === 'PENDING'
+  ).length;
+
+  const inProgressRequests = requests.filter(
+    item => item.status === 'IN_PROGRESS'
+  ).length;
+
+  const completedRequests = requests.filter(
+    item => item.status === 'COMPLETED'
+  ).length;
+
+  const highPriorityRequests = requests.filter(
+    item => item.priority === 'HIGH'
+  ).length;
+
+  const mediumPriorityRequests = requests.filter(
+    item => item.priority === 'MEDIUM'
+  ).length;
+
+  const lowPriorityRequests = requests.filter(
+    item => item.priority === 'LOW'
+  ).length;
+
+  const requestTotal = requests.length;
+
+  const completionRate = requestTotal
+    ? Math.round((completedRequests / requestTotal) * 100)
+    : 0;
+
+  const activeRate = totalEquipment
+    ? Math.round((activeEquipment / totalEquipment) * 100)
+    : 0;
+
+  const priorityStats = [
+    {
+      label: 'High priority',
+      count: highPriorityRequests,
+      color: '#dc2626',
+      background: '#fef2f2'
+    },
+    {
+      label: 'Medium priority',
+      count: mediumPriorityRequests,
+      color: '#d97706',
+      background: '#fffbeb'
+    },
+    {
+      label: 'Low priority',
+      count: lowPriorityRequests,
+      color: '#15803d',
+      background: '#f0fdf4'
+    }
+  ];
+
+  const recentEquipment = [...equipment]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt || 0) -
+        new Date(a.createdAt || 0)
+    )
+    .slice(0, 5);
+
+  const recentRequests = [...requests]
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt || 0) -
+        new Date(a.createdAt || 0)
+    )
+    .slice(0, 5);
+
+  const metrics = [
     {
       title: 'Total Equipment',
       value: totalEquipment,
-      description: 'All registered equipment',
-      color: '#2563eb',
-      background: '#eff6ff',
-      icon: '⚙️'
+      description: 'All registered assets',
+      icon: '▤',
+      accent: C.blue,
+      background: '#f3eefe',
+      to: '/equipment'
     },
     {
       title: 'Active Equipment',
       value: activeEquipment,
       description: 'Currently operational',
-      color: '#15803d',
+      icon: '✓',
+      accent: C.green,
       background: '#f0fdf4',
-      icon: '✓'
+      to: '/equipment'
     },
     {
       title: 'Under Maintenance',
       value: maintenanceEquipment,
-      description: 'Currently under maintenance',
-      color: '#c2410c',
+      description: 'Assets requiring maintenance',
+      icon: '⚙',
+      accent: C.orange,
       background: '#fff7ed',
-      icon: '🔧'
+      to: '/equipment'
+    },
+    {
+      title: 'Open Requests',
+      value: pendingRequests + inProgressRequests,
+      description: `${pendingRequests} pending · ${inProgressRequests} in progress`,
+      icon: '◷',
+      accent: C.purple,
+      background: '#f5f3ff',
+      to: '/maintenance'
     }
   ];
 
-  const styles = {
-    page: {
-      padding: '28px',
-      maxWidth: '1200px',
-      margin: '0 auto',
-      color: '#172033',
-      fontFamily: 'Arial, sans-serif',
-      boxSizing: 'border-box'
-    },
-    header: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: '16px',
-      marginBottom: '28px'
-    },
-    subtitle: {
-      color: '#64748b',
-      marginTop: '-6px',
-      marginBottom: 0
-    },
-    refreshButton: {
-      background: '#1e3a5f',
-      color: '#ffffff',
-      border: 'none',
-      padding: '11px 18px',
-      borderRadius: '8px',
-      fontWeight: '600',
-      cursor: 'pointer'
-    },
-    grid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-      gap: '20px'
-    },
-    card: {
-      background: '#ffffff',
-      padding: '24px',
-      borderRadius: '14px',
-      border: '1px solid #e2e8f0',
-      boxShadow: '0 4px 14px rgba(15, 23, 42, 0.05)'
-    },
-    icon: {
-      width: '44px',
-      height: '44px',
-      borderRadius: '12px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontSize: '22px',
-      fontWeight: 'bold',
-      marginBottom: '18px'
-    },
-    value: {
-      fontSize: '34px',
-      fontWeight: '700',
-      margin: '12px 0'
-    },
-    description: {
-      color: '#64748b',
-      fontSize: '14px',
-      marginBottom: 0
-    },
-    panel: {
-      background: '#ffffff',
-      padding: '24px',
-      borderRadius: '14px',
-      border: '1px solid #e2e8f0',
-      marginTop: '26px',
-      boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)'
-    },
-    message: {
-      padding: '14px',
-      borderRadius: '8px',
-      marginBottom: '20px'
-    }
-  };
-
-  const recentEquipment = [...equipment]
-    .sort((a, b) =>
-      new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
-    )
-    .slice(0, 5);
+  if (loading) {
+    return (
+      <main style={{ padding: 24, color: C.muted }}>
+        <div
+          style={{
+            ...panel,
+            textAlign: 'center',
+            padding: 55
+          }}
+        >
+          <div
+            style={{
+              fontSize: 30,
+              marginBottom: 12
+            }}
+          >
+            ⚙
+          </div>
+          <p role="status" style={{ margin: 0 }}>
+            Loading your maintenance dashboard...
+          </p>
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <main style={styles.page}>
-      <header style={styles.header}>
+    <main
+      style={{
+        width: '100%',
+        maxWidth: 1500,
+        margin: '0 auto',
+        padding: '28px clamp(14px, 2.5vw, 34px)',
+        color: C.text,
+        boxSizing: 'border-box'
+      }}
+    >
+      {/* Page header */}
+      <header
+        className="dashboard-page-header"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 18,
+          marginBottom: 26
+        }}
+      >
         <div>
-          <h1 style={{ marginTop: 0 }}>Dashboard</h1>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              color: C.blue,
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: 1.2,
+              marginBottom: 9
+            }}
+          >
+            <span>●</span>
+            MANAGEMENT OVERVIEW
+          </div>
 
-          <p style={styles.subtitle}>
-            Smart Maintenance Management Overview
+          <h2
+            style={{
+              margin: '0 0 8px',
+              fontSize: 'clamp(24px, 3vw, 31px)',
+              letterSpacing: -1,
+              fontWeight: 800
+            }}
+          >
+            Dashboard
+          </h2>
+
+          <p
+            style={{
+              color: C.muted,
+              margin: 0,
+              fontSize: 13,
+              lineHeight: 1.7
+            }}
+          >
+            Monitor equipment, maintenance activity and operational status.
           </p>
         </div>
 
-        <button
-          type="button"
+        <div
           style={{
-            ...styles.refreshButton,
-            opacity: refreshing ? 0.7 : 1
+            display: 'flex',
+            gap: 10,
+            flexWrap: 'wrap'
           }}
-          onClick={() => loadDashboard(true)}
-          disabled={loading || refreshing}
         >
-          {refreshing ? 'Refreshing...' : '↻ Refresh'}
-        </button>
+          <button
+            type="button"
+            onClick={() => loadDashboard(true)}
+            disabled={refreshing}
+            style={{
+              ...button,
+              background: C.navy,
+              opacity: refreshing ? 0.7 : 1
+            }}
+          >
+            {refreshing ? 'Refreshing...' : '↻ Refresh data'}
+          </button>
+
+          <Link to="/maintenance" style={button}>
+            + Maintenance requests
+          </Link>
+        </div>
       </header>
 
-      {error && (
+      <section className="dashboard-hero" aria-label="Smart maintenance">
+        <div className="dashboard-hero-copy">
+          <p className="dashboard-hero-eyebrow">SMART MAINTENANCE</p>
+          <h3>Make uptime part of the plan.</h3>
+          <p>
+            A clearer view of the work, people, and equipment that keep your
+            operation moving.
+          </p>
+          <Link to="/maintenance" className="dashboard-hero-link">
+            View maintenance work <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+      </section>
+
+      <section id="about" className="dashboard-about" aria-labelledby="about-title">
+        <div className="dashboard-about-images" aria-hidden="true">
+          <img className="dashboard-about-photo" src="/images/industrial-maintenance.jpg" alt="" />
+          <img className="dashboard-about-technician" src="/maintenance-technician.svg" alt="" />
+        </div>
+        <div className="dashboard-about-copy">
+          <p className="dashboard-hero-eyebrow">ABOUT SMART MAINTENANCE</p>
+          <h3 id="about-title">A practical workspace for reliable operations.</h3>
+          <p>
+            Smart Maintenance brings equipment records, work requests, preventive schedules,
+            and team decisions together in one clear place. It helps maintenance teams move
+            from reactive fixes to planned, measurable uptime.
+          </p>
+          <div className="dashboard-about-points">
+            <span>Equipment visibility</span>
+            <span>Planned maintenance</span>
+            <span>Team accountability</span>
+          </div>
+        </div>
+      </section>
+
+	      {/* AI Maintenance Advisor */}
+<AIMaintenanceAdvisor />
+
+	{/* AI Risk Analytics */}
+<AIRiskOverview />
+	{/* Maintenance Notifications */}
+<section
+  style={{
+    ...panel,
+    marginBottom: 23,
+    borderLeft: '4px solid #7c3aed'
+  }}
+>
+  <div
+    style={{
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 12,
+      flexWrap: 'wrap',
+      marginBottom: 18
+    }}
+  >
+    <div>
+      <h3 style={heading}>Maintenance Notifications</h3>
+      <p style={{ color: C.muted, fontSize: 12, margin: '7px 0 0' }}>
+        Overdue and upcoming preventive maintenance
+      </p>
+    </div>
+
+    <Link to="/maintenance" style={button}>
+      View requests
+    </Link>
+  </div>
+
+  {alertsLoading ? (
+    <p style={{ color: C.muted, fontSize: 13 }}>
+      Loading maintenance alerts...
+    </p>
+  ) : alertsError ? (
+    <p role="alert" style={{ color: C.red, fontSize: 13 }}>
+      {alertsError}
+    </p>
+  ) : (
+    <>
+      {[
+        {
+          title: 'Overdue',
+          items: maintenanceAlerts.overdue,
+          color: '#dc2626',
+          background: '#fef2f2'
+        },
+        {
+          title: 'Due Today',
+          items: maintenanceAlerts.dueToday,
+          color: '#d97706',
+          background: '#fffbeb'
+        },
+        {
+          title: 'Upcoming — Next 7 Days',
+          items: maintenanceAlerts.upcoming,
+          color: '#6d28d9',
+          background: '#f3eefe'
+        }
+      ].map(group => (
+        <div key={group.title} style={{ marginTop: 14 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 10,
+              padding: '12px 14px',
+              borderRadius: 10,
+              background: group.background
+            }}
+          >
+            <strong style={{ color: group.color, fontSize: 13 }}>
+              {group.title}
+            </strong>
+
+            <span style={{ color: group.color, fontWeight: 800 }}>
+              {group.items.length}
+            </span>
+          </div>
+
+          {group.items.length === 0 ? (
+            <p style={{ color: C.muted, fontSize: 12, padding: '0 8px' }}>
+              No schedules in this category.
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+              {group.items.map(item => (
+                <div
+                  key={item._id}
+                  style={{
+                    padding: 14,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: 10
+                  }}
+                >
+                  <strong style={{ color: C.text, fontSize: 13 }}>
+                    {item.title}
+                  </strong>
+
+                  <p style={{ color: C.muted, fontSize: 12, margin: '6px 0' }}>
+                    {item.equipment?.name || 'Equipment unavailable'}
+                    {item.equipment?.location
+                      ? ` · ${item.equipment.location}`
+                      : ''}
+                  </p>
+
+                  <span style={{ color: group.color, fontSize: 11 }}>
+                    Due: {new Date(item.dueDate).toLocaleDateString()} ·{' '}
+                    {item.frequency}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </>
+  )}
+</section>
+      {/* API errors */}
+      {errors.length > 0 && (
         <div
           role="alert"
           style={{
-            ...styles.message,
+            marginBottom: 22,
+            padding: 15,
+            borderRadius: 11,
+            border: '1px solid #fecaca',
             background: '#fef2f2',
-            color: '#b91c1c'
+            color: '#991b1b',
+            fontSize: 13
           }}
         >
-          <strong>Unable to load dashboard</strong>
-          <p style={{ marginBottom: '12px' }}>{error}</p>
+          <strong>Some dashboard data could not be loaded.</strong>
+
+          <ul style={{ marginBottom: 0, lineHeight: 1.8 }}>
+            {errors.map((error, index) => (
+              <li key={`${error}-${index}`}>{error}</li>
+            ))}
+          </ul>
 
           <button
             type="button"
             onClick={() => loadDashboard()}
             style={{
-              ...styles.refreshButton,
-              background: '#b91c1c'
+              ...button,
+              marginTop: 12,
+              background: '#991b1b'
             }}
           >
-            Try Again
+            Try again
           </button>
         </div>
       )}
 
-      {loading ? (
-        <p role="status">Loading dashboard data...</p>
-      ) : (
-        <>
-          <section style={styles.grid}>
-            {cards.map(card => (
-              <article key={card.title} style={styles.card}>
+      {/* Main statistics */}
+      <section
+        aria-label="Equipment and maintenance statistics"
+        style={{
+          display: 'grid',
+          gridTemplateColumns:
+            'repeat(auto-fit, minmax(min(100%, 215px), 1fr))',
+          gap: 17,
+          marginBottom: 23
+        }}
+      >
+        {metrics.map(metric => (
+          <MetricCard key={metric.title} {...metric} />
+        ))}
+      </section>
+
+      {/* Status overview and equipment health */}
+      <section
+        style={{
+          display: 'grid',
+          gridTemplateColumns:
+            'repeat(auto-fit, minmax(min(100%, 310px), 1fr))',
+          gap: 20,
+          marginBottom: 23
+        }}
+      >
+        <article style={panel}>
+          <div style={{ marginBottom: 22 }}>
+            <h3 style={heading}>Maintenance overview</h3>
+            <p
+              style={{
+                margin: '7px 0 0',
+                color: C.muted,
+                fontSize: 12
+              }}
+            >
+              Request status distribution
+            </p>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 24,
+              flexWrap: 'wrap',
+              padding: '5px 0 15px'
+            }}
+          >
+            <div
+              style={{
+                width: 122,
+                height: 122,
+                flexShrink: 0,
+                borderRadius: '50%',
+                background: `conic-gradient(
+                  #7c3aed 0% ${requestTotal ? pendingRequests / requestTotal * 100 : 0}%,
+                  #8b5cf6 ${requestTotal ? pendingRequests / requestTotal * 100 : 0}% ${requestTotal ? (pendingRequests + inProgressRequests) / requestTotal * 100 : 0}%,
+                  #16a34a ${requestTotal ? (pendingRequests + inProgressRequests) / requestTotal * 100 : 0}% 100%
+                )`,
+                display: 'grid',
+                placeItems: 'center'
+              }}
+            >
+              <div
+                style={{
+                  width: 88,
+                  height: 88,
+                  borderRadius: '50%',
+                  background: '#fff',
+                  display: 'grid',
+                  alignContent: 'center',
+                  textAlign: 'center'
+                }}
+              >
+                <strong style={{ fontSize: 25 }}>
+                  {requestTotal}
+                </strong>
+                <span style={{ fontSize: 10, color: C.muted }}>
+                  Total requests
+                </span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                flex: 1,
+                minWidth: 130,
+                display: 'grid',
+                gap: 16
+              }}
+            >
+              {[
+                {
+                  label: 'Pending',
+                  count: pendingRequests,
+                  color: '#7c3aed'
+                },
+                {
+                  label: 'In progress',
+                  count: inProgressRequests,
+                  color: '#8b5cf6'
+                },
+                {
+                  label: 'Completed',
+                  count: completedRequests,
+                  color: '#16a34a'
+                }
+              ].map(item => (
                 <div
+                  key={item.label}
                   style={{
-                    ...styles.icon,
-                    color: card.color,
-                    background: card.background
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 10
                   }}
                 >
-                  {card.icon}
+                  <span
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      fontSize: 12,
+                      color: C.muted
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 9,
+                        height: 9,
+                        borderRadius: 3,
+                        background: item.color
+                      }}
+                    />
+                    {item.label}
+                  </span>
+                  <strong style={{ fontSize: 14 }}>
+                    {item.count}
+                  </strong>
                 </div>
+              ))}
+            </div>
+          </div>
 
-                <h3 style={{ margin: 0, fontSize: '16px' }}>
-                  {card.title}
-                </h3>
+          {requestTotal === 0 && (
+            <p
+              style={{
+                color: C.muted,
+                fontSize: 12,
+                borderTop: `1px solid ${C.border}`,
+                paddingTop: 14
+              }}
+            >
+              No maintenance requests have been recorded yet.
+            </p>
+          )}
 
-                <p style={styles.value}>{card.value}</p>
+          <Link
+            to="/maintenance"
+            style={{
+              display: 'inline-block',
+              marginTop: 10,
+              color: C.blue,
+              textDecoration: 'none',
+              fontSize: 12,
+              fontWeight: 800
+            }}
+          >
+            View maintenance requests →
+          </Link>
+        </article>
 
-                <p style={styles.description}>
-                  {card.description}
-                </p>
-              </article>
-            ))}
-          </section>
+        <article style={panel}>
+          <div style={{ marginBottom: 24 }}>
+            <h3 style={heading}>Equipment health</h3>
+            <p
+              style={{
+                margin: '7px 0 0',
+                color: C.muted,
+                fontSize: 12
+              }}
+            >
+              Current registered equipment status
+            </p>
+          </div>
 
-          <section style={styles.panel}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: 12,
+              alignItems: 'baseline',
+              marginBottom: 11
+            }}
+          >
+            <span style={{ color: C.muted, fontSize: 12 }}>
+              Active equipment
+            </span>
+            <strong style={{ fontSize: 15 }}>
+              {activeEquipment} / {totalEquipment}
+            </strong>
+          </div>
+
+          <ProgressBar value={activeRate} color={C.blue} />
+
+          <p
+            style={{
+              color: C.muted,
+              fontSize: 11,
+              marginTop: 9
+            }}
+          >
+            {activeRate}% of registered equipment is active.
+          </p>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 12,
+              marginTop: 20
+            }}
+          >
+            <div
+              style={{
+                padding: 16,
+                background: '#f0fdf4',
+                borderRadius: 12
+              }}
+            >
+              <div
+                style={{
+                  color: '#15803d',
+                  fontSize: 12,
+                  fontWeight: 700
+                }}
+              >
+                Operational
+              </div>
+              <strong
+                style={{
+                  display: 'block',
+                  color: '#166534',
+                  fontSize: 26,
+                  marginTop: 8
+                }}
+              >
+                {activeEquipment}
+              </strong>
+            </div>
+
+            <div
+              style={{
+                padding: 16,
+                background: '#fff7ed',
+                borderRadius: 12
+              }}
+            >
+              <div
+                style={{
+                  color: '#c2410c',
+                  fontSize: 12,
+                  fontWeight: 700
+                }}
+              >
+                Maintenance
+              </div>
+              <strong
+                style={{
+                  display: 'block',
+                  color: '#9a3412',
+                  fontSize: 26,
+                  marginTop: 8
+                }}
+              >
+                {maintenanceEquipment}
+              </strong>
+            </div>
+          </div>
+
+          <Link
+            to="/equipment"
+            style={{
+              display: 'inline-block',
+              marginTop: 20,
+              color: C.blue,
+              textDecoration: 'none',
+              fontSize: 12,
+              fontWeight: 800
+            }}
+          >
+            Manage equipment →
+          </Link>
+        </article>
+      </section>
+
+      {/* NEW: Priority analytics and service performance */}
+      <section
+        aria-label="Maintenance analytics"
+        style={{
+          display: 'grid',
+          gridTemplateColumns:
+            'repeat(auto-fit, minmax(min(100%, 310px), 1fr))',
+          gap: 20,
+          marginBottom: 23
+        }}
+      >
+        {/* Priority breakdown */}
+        <article style={panel}>
+          <div style={{ marginBottom: 25 }}>
+            <h3 style={heading}>Priority breakdown</h3>
+            <p
+              style={{
+                color: C.muted,
+                fontSize: 12,
+                margin: '7px 0 0'
+              }}
+            >
+              Maintenance requests by urgency
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gap: 23 }}>
+            {priorityStats.map(item => {
+              const percentage = requestTotal
+                ? Math.round((item.count / requestTotal) * 100)
+                : 0;
+
+              return (
+                <div key={item.label}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 12,
+                      marginBottom: 10
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 9
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: 3,
+                          background: item.color
+                        }}
+                      />
+
+                      <span
+                        style={{
+                          color: C.text,
+                          fontSize: 13,
+                          fontWeight: 600
+                        }}
+                      >
+                        {item.label}
+                      </span>
+                    </div>
+
+                    <strong style={{ fontSize: 13 }}>
+                      {item.count}
+                      <span
+                        style={{
+                          color: C.muted,
+                          fontWeight: 500,
+                          marginLeft: 7
+                        }}
+                      >
+                        {percentage}%
+                      </span>
+                    </strong>
+                  </div>
+
+                  <ProgressBar
+                    value={percentage}
+                    color={item.color}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <div
+            style={{
+              marginTop: 25,
+              padding: 14,
+              borderRadius: 10,
+              background: '#f8fafc',
+              color: C.muted,
+              fontSize: 11,
+              lineHeight: 1.7
+            }}
+          >
+            Percentages are calculated from all recorded maintenance requests.
+          </div>
+
+          <Link
+            to="/maintenance"
+            style={{
+              display: 'inline-block',
+              marginTop: 18,
+              color: C.blue,
+              fontSize: 12,
+              fontWeight: 800,
+              textDecoration: 'none'
+            }}
+          >
+            Review requests →
+          </Link>
+        </article>
+
+        {/* Service performance */}
+        <article style={panel}>
+          <div style={{ marginBottom: 22 }}>
+            <h3 style={heading}>Service performance</h3>
+            <p
+              style={{
+                color: C.muted,
+                fontSize: 12,
+                margin: '7px 0 0'
+              }}
+            >
+              Overall maintenance completion progress
+            </p>
+          </div>
+
+          <div
+            style={{
+              padding: 20,
+              borderRadius: 14,
+              background: '#f8faff',
+              border: '1px solid #e8eefb'
+            }}
+          >
+            <p
+              style={{
+                color: C.muted,
+                fontSize: 12,
+                margin: '0 0 8px'
+              }}
+            >
+              Completion rate
+            </p>
+
             <div
               style={{
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '12px',
-                marginBottom: '18px'
+                alignItems: 'baseline',
+                gap: 5
               }}
             >
-              <div>
-                <h2 style={{ margin: 0 }}>Recent Equipment</h2>
-                <p style={{ color: '#64748b', fontSize: '14px' }}>
-                  Latest 5 registered equipment records
-                </p>
-              </div>
-
-              <Link
-                to="/equipment"
+              <strong
                 style={{
-                  color: '#2563eb',
-                  fontWeight: '600',
-                  textDecoration: 'none'
+                  color: C.text,
+                  fontSize: 40,
+                  letterSpacing: -1.5,
+                  lineHeight: 1.2
                 }}
               >
-                View All →
-              </Link>
+                {completionRate}
+              </strong>
+              <span style={{ color: C.muted, fontWeight: 700 }}>
+                %
+              </span>
             </div>
 
-            {equipment.length === 0 ? (
-              <div
+            <div style={{ marginTop: 18 }}>
+              <ProgressBar
+                value={completionRate}
+                color="#16a34a"
+              />
+            </div>
+
+            <p
+              style={{
+                color: C.muted,
+                fontSize: 11,
+                margin: '10px 0 0'
+              }}
+            >
+              {completedRequests} completed out of {requestTotal} total requests
+            </p>
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              gap: 12,
+              marginTop: 16
+            }}
+          >
+            <div
+              style={{
+                padding: 15,
+                borderRadius: 12,
+                background: '#fffbeb'
+              }}
+            >
+              <span style={{ color: '#92400e', fontSize: 12 }}>
+                Pending
+              </span>
+              <strong
                 style={{
-                  padding: '28px',
-                  textAlign: 'center',
-                  background: '#f8fafc',
-                  borderRadius: '10px',
-                  color: '#64748b'
+                  display: 'block',
+                  color: '#92400e',
+                  fontSize: 25,
+                  marginTop: 7
                 }}
               >
-                <p>No equipment records found.</p>
+                {pendingRequests}
+              </strong>
+            </div>
 
-                <Link to="/equipment">
-                  Add your first equipment
-                </Link>
-              </div>
-            ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table
-                  style={{
-                    width: '100%',
-                    borderCollapse: 'collapse',
-                    textAlign: 'left',
-                    minWidth: '480px'
-                  }}
-                >
-                  <thead>
-                    <tr style={{ background: '#f8fafc' }}>
-                      <th style={cellStyle}>Equipment Name</th>
-                      <th style={cellStyle}>Location</th>
-                      <th style={cellStyle}>Status</th>
+            <div
+              style={{
+                padding: 15,
+                borderRadius: 12,
+                background: '#f3eefe'
+              }}
+            >
+              <span style={{ color: '#6d28d9', fontSize: 12 }}>
+                In progress
+              </span>
+              <strong
+                style={{
+                  display: 'block',
+                  color: '#6d28d9',
+                  fontSize: 25,
+                  marginTop: 7
+                }}
+              >
+                {inProgressRequests}
+              </strong>
+            </div>
+          </div>
+
+          <p
+            style={{
+              color: C.muted,
+              fontSize: 11,
+              lineHeight: 1.6,
+              margin: '16px 0 0'
+            }}
+          >
+            Performance figures use the maintenance records currently returned by the API.
+          </p>
+        </article>
+      </section>
+
+      {/* Recent maintenance requests */}
+      <section style={{ ...panel, marginBottom: 22 }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+            marginBottom: 18
+          }}
+        >
+          <div>
+            <h3 style={heading}>Recent maintenance requests</h3>
+            <p
+              style={{
+                margin: '7px 0 0',
+                color: C.muted,
+                fontSize: 12
+              }}
+            >
+              Latest recorded maintenance activity
+            </p>
+          </div>
+
+          <Link
+            to="/maintenance"
+            style={{
+              color: C.blue,
+              fontSize: 12,
+              fontWeight: 800,
+              textDecoration: 'none'
+            }}
+          >
+            View all →
+          </Link>
+        </div>
+
+        {recentRequests.length === 0 ? (
+          <div
+            style={{
+              padding: 30,
+              textAlign: 'center',
+              background: '#f8fafc',
+              borderRadius: 12
+            }}
+          >
+            <div style={{ fontSize: 28, marginBottom: 10 }}>▤</div>
+            <strong style={{ fontSize: 14 }}>
+              No maintenance requests yet
+            </strong>
+            <p
+              style={{
+                color: C.muted,
+                fontSize: 12,
+                margin: '8px 0 16px'
+              }}
+            >
+              Create a request to start tracking maintenance activity.
+            </p>
+            <Link to="/maintenance" style={button}>
+              Open maintenance requests
+            </Link>
+          </div>
+        ) : (
+          <div style={{ width: '100%', overflowX: 'auto' }}>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                minWidth: 570
+              }}
+            >
+              <thead>
+                <tr>
+                  <th style={thStyle}>Request</th>
+                  <th style={thStyle}>Equipment</th>
+                  <th style={thStyle}>Priority</th>
+                  <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Created</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {recentRequests.map(request => {
+                  const equipmentItem =
+                    typeof request.equipment === 'object'
+                      ? request.equipment
+                      : equipment.find(
+                          item => item._id === request.equipment
+                        );
+
+                  return (
+                    <tr key={request._id}>
+                      <td style={tdStyle}>
+                        <strong style={{ color: C.text }}>
+                          {request.title || 'Untitled request'}
+                        </strong>
+                      </td>
+
+                      <td style={tdStyle}>
+                        {equipmentItem?.name || 'Equipment unavailable'}
+                      </td>
+
+                      <td style={tdStyle}>
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 11,
+                            color:
+                              request.priority === 'HIGH'
+                                ? '#b91c1c'
+                                : request.priority === 'LOW'
+                                  ? '#15803d'
+                                  : '#92400e'
+                          }}
+                        >
+                          {request.priority || 'MEDIUM'}
+                        </span>
+                      </td>
+
+                      <td style={tdStyle}>
+                        <StatusBadge status={request.status} />
+                      </td>
+
+                      <td
+                        style={{
+                          ...tdStyle,
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {formatDate(request.createdAt)}
+                      </td>
                     </tr>
-                  </thead>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
-                  <tbody>
-                    {recentEquipment.map(item => (
-                      <tr key={item._id}>
-                        <td style={cellStyle}>
-                          <strong>{item.name}</strong>
-                          {item.description && (
-                            <div
-                              style={{
-                                color: '#64748b',
-                                fontSize: '12px',
-                                marginTop: '4px'
-                              }}
-                            >
-                              {item.description}
-                            </div>
-                          )}
-                        </td>
+      {/* Recently registered equipment */}
+      <section style={panel}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+            marginBottom: 18
+          }}
+        >
+          <div>
+            <h3 style={heading}>Recently registered equipment</h3>
+            <p
+              style={{
+                margin: '7px 0 0',
+                color: C.muted,
+                fontSize: 12
+              }}
+            >
+              Latest equipment records from your system
+            </p>
+          </div>
 
-                        <td style={cellStyle}>{item.location}</td>
+          <Link
+            to="/equipment"
+            style={{
+              color: C.blue,
+              fontSize: 12,
+              fontWeight: 800,
+              textDecoration: 'none'
+            }}
+          >
+            Manage assets →
+          </Link>
+        </div>
 
-                        <td style={cellStyle}>
-                          <span
-                            style={{
-                              display: 'inline-block',
-                              padding: '5px 10px',
-                              borderRadius: '20px',
-                              fontSize: '12px',
-                              fontWeight: 'bold',
-                              whiteSpace: 'nowrap',
-                              background:
-                                item.status === 'ACTIVE'
-                                  ? '#dcfce7'
-                                  : item.status === 'UNDER_MAINTENANCE'
-                                    ? '#ffedd5'
-                                    : '#e2e8f0',
-                              color:
-                                item.status === 'ACTIVE'
-                                  ? '#166534'
-                                  : item.status === 'UNDER_MAINTENANCE'
-                                    ? '#9a3412'
-                                    : '#334155'
-                            }}
-                          >
-                            {item.status?.replaceAll('_', ' ') || 'UNKNOWN'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        </>
-      )}
+        {recentEquipment.length === 0 ? (
+          <p style={{ color: C.muted, fontSize: 13 }}>
+            No equipment records found. Add equipment to populate this section.
+          </p>
+        ) : (
+          <div style={{ width: '100%', overflowX: 'auto' }}>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                minWidth: 470
+              }}
+            >
+              <thead>
+                <tr>
+                  <th style={thStyle}>Equipment</th>
+                  <th style={thStyle}>Location</th>
+                  <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Registered</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {recentEquipment.map(item => (
+                  <tr key={item._id}>
+                    <td style={tdStyle}>
+                      <strong style={{ color: C.text }}>
+                        {item.name || 'Unnamed equipment'}
+                      </strong>
+
+                      {item.description && (
+                        <div
+                          style={{
+                            color: C.muted,
+                            fontSize: 11,
+                            marginTop: 5
+                          }}
+                        >
+                          {item.description}
+                        </div>
+                      )}
+                    </td>
+
+                    <td style={tdStyle}>
+                      {item.location || '—'}
+                    </td>
+
+                    <td style={tdStyle}>
+                      <StatusBadge status={item.status} />
+                    </td>
+
+                    <td
+                      style={{
+                        ...tdStyle,
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      {formatDate(item.createdAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <footer
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 8,
+          marginTop: 23,
+          color: '#94a3b8',
+          fontSize: 11
+        }}
+      >
+        <span>Smart Maintenance Management System</span>
+        <span>
+          Completion rate: {completionRate}% of recorded requests
+        </span>
+      </footer>
     </main>
   );
 }
-
-const cellStyle = {
-  padding: '14px 12px',
-  borderBottom: '1px solid #e2e8f0',
-  fontSize: '14px'
-};
 
 export default Dashboard;

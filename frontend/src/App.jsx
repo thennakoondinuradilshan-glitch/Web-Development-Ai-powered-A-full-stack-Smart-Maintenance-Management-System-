@@ -1,4 +1,4 @@
-
+import PreventiveMaintenance from './components/PreventiveMaintenance';
 import { useEffect, useState } from 'react';
 import {
   Routes,
@@ -16,12 +16,20 @@ import Dashboard from './components/Dashboard';
 import Equipment from './components/Equipment';
 import MaintenanceRequests from './components/MaintenanceRequests';
 import UserManagement from './components/UserManagement';
+import Reports from './components/Reports';
+import CursorEffects from './components/CursorEffects';
+import AmbientMedia from './components/AmbientMedia';
 
 import './App.css';
 
 function App() {
   const [user, setUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') return 'dark';
+    return window.localStorage.getItem('smart-maintenance-theme') || 'dark';
+  });
 
   const [authPage, setAuthPage] = useState('login');
   const [registeredEmail, setRegisteredEmail] = useState('');
@@ -31,6 +39,40 @@ function App() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   const location = useLocation();
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem('smart-maintenance-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(currentTheme => currentTheme === 'dark' ? 'light' : 'dark');
+  };
+
+  const themeToggle = (
+    <button
+      type="button"
+      className="theme-toggle"
+      onClick={toggleTheme}
+      aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+      title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+    >
+      <span aria-hidden="true">{theme === 'dark' ? '☀' : '☾'}</span>
+      {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+    </button>
+  );
+
+  const sidebarToggle = (
+    <button
+      type="button"
+      className="sidebar-toggle"
+      onClick={() => setSidebarCollapsed(current => !current)}
+      aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+      title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+    >
+      <span aria-hidden="true">{sidebarCollapsed ? '›' : '‹'}</span>
+    </button>
+  );
 
   // Restore the login session after loading or refreshing the app.
   useEffect(() => {
@@ -100,10 +142,12 @@ function App() {
     `app-nav-link${isActive ? ' active' : ''}`;
 
   const pageTitles = {
+	'/preventive-maintenance': 'Preventive Maintenance',
     '/dashboard': 'Dashboard',
     '/equipment': 'Equipment',
     '/maintenance': 'Maintenance Requests',
     '/users': 'User Management'
+    ,'/reports': 'Reports'
   };
 
   const currentPage =
@@ -112,38 +156,24 @@ function App() {
   // Session loading screen.
   if (checkingSession) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: '#f8fafc',
-          color: '#1e3a5f',
-          fontFamily: 'Arial, sans-serif'
-        }}
-      >
-        Checking login session...
+      <div className={`site-shell theme-${theme}`}>
+        <CursorEffects />
+        <AmbientMedia />
+        {themeToggle}
+        <div className="session-loading">
+          Checking login session...
+        </div>
       </div>
     );
   }
 
   // Public authentication pages.
   if (!user) {
-    if (authPage === 'register') {
-      return (
-        <Registration
-          onRegistrationSuccess={handleRegistrationSuccess}
-          onShowLogin={() => {
-            setAuthPage('login');
-            setRegistrationMessage('');
-          }}
-        />
-      );
-    }
-
     return (
-      <>
+      <div className={`site-shell theme-${theme}`}>
+        <CursorEffects />
+        <AmbientMedia />
+        {themeToggle}
         {logoutError && (
           <div
             role="alert"
@@ -158,30 +188,61 @@ function App() {
           </div>
         )}
 
-        <Login
-          onLoginSuccess={handleLoginSuccess}
-          onShowRegister={() => {
-            setAuthPage('register');
-            setRegistrationMessage('');
-          }}
-          initialEmail={registeredEmail}
-          successMessage={registrationMessage}
-        />
-      </>
+        {authPage === 'register' ? (
+          <Registration
+            onRegistrationSuccess={handleRegistrationSuccess}
+            onShowLogin={() => {
+              setAuthPage('login');
+              setRegistrationMessage('');
+            }}
+          />
+        ) : (
+          <Login
+            onLoginSuccess={handleLoginSuccess}
+            onShowRegister={() => {
+              setAuthPage('register');
+              setRegistrationMessage('');
+            }}
+            initialEmail={registeredEmail}
+            successMessage={registrationMessage}
+          />
+        )}
+      </div>
     );
   }
 
   // Authenticated application.
   return (
-    <div className="app-layout">
-      <aside className="app-sidebar">
+      <div className={`site-shell theme-${theme}`}>
+        <CursorEffects />
+        <AmbientMedia />
+        <div className={`app-layout${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
+        <aside className="app-sidebar">
+        {sidebarToggle}
         <div className="app-brand">
-          <div className="app-brand-icon">SM</div>
+          <img className="app-brand-icon" src="/maintenance-logo.svg" alt="Smart Maintenance" />
 
           <div>
             <h2>Smart Maintenance</h2>
             <p>Management System</p>
           </div>
+        </div>
+
+        <div className="app-sidebar-profile">
+          <span className="app-profile-avatar" aria-hidden="true">
+            {user.name
+              .trim()
+              .split(/\s+/)
+              .slice(0, 2)
+              .map(part => part[0])
+              .join('')
+              .toUpperCase()}
+          </span>
+          <span className="app-profile-details">
+            <strong>{user.name}</strong>
+            <small>{user.role.toLowerCase()}</small>
+          </span>
+          <span className="app-profile-status" aria-label="Online" />
         </div>
 
         <p className="app-menu-label">MAIN MENU</p>
@@ -210,7 +271,20 @@ function App() {
             <span className="app-nav-icon">🔧</span>
             Maintenance Requests
           </NavLink>
-
+          <NavLink
+            to="/preventive-maintenance"
+  	className={navClass}
+	>
+  	<span className="app-nav-icon">◷</span>
+  	Preventive Maintenance
+          </NavLink>
+          <NavLink
+            to="/reports"
+            className={navClass}
+          >
+            <span className="app-nav-icon">▥</span>
+            Reports
+          </NavLink>
           {user.role === 'ADMIN' && (
             <NavLink
               to="/users"
@@ -226,10 +300,19 @@ function App() {
           <span className="app-status-dot" />
           System Interface
         </div>
-      </aside>
+        </aside>
 
-      <div className="app-main">
-        <header className="app-topbar">
+        <div className="app-main">
+          <div className="app-social-strip">
+            <span className="app-social-label">Connect with Smart Maintenance</span>
+            <nav aria-label="Social media links">
+              <a href="https://www.facebook.com/" target="_blank" rel="noreferrer" aria-label="Facebook">f</a>
+              <a href="https://www.instagram.com/" target="_blank" rel="noreferrer" aria-label="Instagram">◎</a>
+              <a href="https://www.linkedin.com/" target="_blank" rel="noreferrer" aria-label="LinkedIn">in</a>
+              <a href="https://www.youtube.com/" target="_blank" rel="noreferrer" aria-label="YouTube">▶</a>
+            </nav>
+          </div>
+          <header className="app-topbar">
           <div>
             <p className="app-breadcrumb">
               Smart Maintenance /
@@ -248,6 +331,19 @@ function App() {
             </p>
           </div>
 
+          <nav className="app-utility-nav" aria-label="Utility navigation">
+            <NavLink to="/dashboard">Home</NavLink>
+            <a href="#about">About us</a>
+            {themeToggle}
+            <a href="mailto:support@smartmaintenance.local">Contact</a>
+            <a href="https://www.google.com/maps/search/maintenance+services" target="_blank" rel="noreferrer">Location</a>
+            <button
+              type="button"
+              aria-label="Search the workspace"
+              onClick={() => document.querySelector('.app-content input, .app-content select')?.focus()}
+            >⌕ <span>Search</span></button>
+          </nav>
+
           <button
             type="button"
             className="app-logout-button"
@@ -256,9 +352,9 @@ function App() {
           >
             {loggingOut ? 'Logging out...' : 'Logout ↗'}
           </button>
-        </header>
+          </header>
 
-        {logoutError && (
+          {logoutError && (
           <div
             role="alert"
             style={{
@@ -271,10 +367,14 @@ function App() {
           >
             {logoutError}
           </div>
-        )}
+          )}
 
-        <main className="app-content">
+          <main className="app-content">
           <Routes>
+		<Route
+  		path="/preventive-maintenance"
+  		element={<PreventiveMaintenance user={user} />}
+		/>
             <Route
               path="/"
               element={<Navigate to="/dashboard" replace />}
@@ -305,11 +405,17 @@ function App() {
             />
 
             <Route
+              path="/reports"
+              element={<Reports />}
+            />
+
+            <Route
               path="*"
               element={<Navigate to="/dashboard" replace />}
             />
           </Routes>
-        </main>
+          </main>
+        </div>
       </div>
     </div>
   );

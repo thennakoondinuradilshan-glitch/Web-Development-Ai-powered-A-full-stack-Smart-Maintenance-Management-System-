@@ -74,16 +74,17 @@ function UserManagement({ currentUser }) {
   };
 
   const roleColors = {
-    ADMIN: { background: '#dbeafe', color: '#1d4ed8' },
+    ADMIN: { background: '#ede9fe', color: '#6d28d9' },
     TECHNICIAN: { background: '#dcfce7', color: '#166534' },
     USER: { background: '#f1f5f9', color: '#475569' }
   };
 
   return (
-    <main style={styles.page}>
-      <div style={styles.header}>
+    <main className="app-page users-page" style={styles.page}>
+      <div className="app-page-header users-page-header" style={styles.header}>
         <div>
-          <h1 style={{ marginBottom: 8 }}>User Management</h1>
+          <p className="app-page-eyebrow">TEAM & ACCESS</p>
+          <h1 style={{ margin: '5px 0 8px' }}>User Management</h1>
           <p style={{ color: '#64748b', margin: 0 }}>
             View registered users and manage their access roles.
           </p>
@@ -98,6 +99,26 @@ function UserManagement({ currentUser }) {
           {loading ? 'Loading...' : 'Refresh'}
         </button>
       </div>
+
+      <section className="users-summary" aria-label="User account summary">
+        {[
+          { label: 'Total users', role: null },
+          { label: 'Administrators', role: 'ADMIN' },
+          { label: 'Technicians', role: 'TECHNICIAN' },
+          { label: 'Standard users', role: 'USER' }
+        ].map((stat) => (
+          <article className="users-summary-card" key={stat.label}>
+            <span>{stat.label}</span>
+            <strong>
+              {loading
+                ? '—'
+                : stat.role
+                  ? users.filter((user) => user.role === stat.role).length
+                  : users.length}
+            </strong>
+          </article>
+        ))}
+      </section>
 
       {error && (
         <div role="alert" style={styles.error}>
@@ -206,7 +227,7 @@ const styles = {
     margin: '0 auto',
     padding: 28,
     color: '#172033',
-    fontFamily: 'Arial, sans-serif'
+    fontFamily: 'Inter, Segoe UI, Arial, sans-serif'
   },
   header: {
     display: 'flex',
@@ -217,11 +238,12 @@ const styles = {
     marginBottom: 24
   },
   panel: {
-    background: '#fff',
+    background: 'rgba(255,255,255,0.94)',
     padding: 24,
-    border: '1px solid #e2e8f0',
-    borderRadius: 12,
-    boxShadow: '0 3px 12px rgba(15,23,42,0.04)'
+    border: '1px solid rgba(124,58,237,0.13)',
+    borderRadius: 16,
+    boxShadow: '0 8px 26px rgba(19,24,40,0.08)',
+    backdropFilter: 'blur(12px)'
   },
   table: {
     width: '100%',
@@ -251,7 +273,7 @@ const styles = {
     padding: '10px 16px',
     border: 'none',
     borderRadius: 6,
-    background: '#1e3a5f',
+    background: '#6d28d9',
     color: '#fff',
     cursor: 'pointer'
   },

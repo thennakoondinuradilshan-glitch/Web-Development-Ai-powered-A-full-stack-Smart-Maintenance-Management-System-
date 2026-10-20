@@ -1,0 +1,59 @@
+.cursor-effects {
+  position: fixed;
+  z-index: 300;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.cursor-active .cursor-effects {
+  opacity: 1;
+}
+
+.cursor-trail-dot,
+.cursor-ring {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  display: block;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.cursor-trail-dot {
+  width: 5px;
+  height: 5px;
+  background: #f0a323;
+  box-shadow: 0 0 5px rgba(240, 163, 35, 0.35);
+  opacity: 0.55;
+}
+
+.cursor-ring {
+  width: 16px;
+  height: 16px;
+  top: -9px;
+  left: -9px;
+  border: 1px solid rgba(175, 196, 214, 0.75);
+  box-shadow: 0 0 0 3px rgba(175, 196, 214, 0.08);
+  transition: width 150ms ease, height 150ms ease, border-color 150ms ease;
+}
+
+.cursor-click .cursor-ring {
+  width: 24px;
+  height: 24px;
+  top: -12px;
+  left: -12px;
+  border-color: #f0a323;
+  animation: cursor-click-pulse 450ms ease-out;
+}
+
+@keyframes cursor-click-pulse {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@media (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .cursor-effects { display: none; }
+}

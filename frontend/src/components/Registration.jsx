@@ -1,6 +1,7 @@
-
 import { useState } from 'react';
 import api from '../api';
+import PasswordField from './PasswordField';
+import './Auth.css';
 
 function Registration({ onRegistrationSuccess, onShowLogin }) {
   const [name, setName] = useState('');
@@ -33,8 +34,10 @@ function Registration({ onRegistrationSuccess, onShowLogin }) {
         password
       });
 
-      onRegistrationSuccess(email.trim().toLowerCase(),
-        response.data.message || 'Registration successful.');
+      onRegistrationSuccess(
+        email.trim().toLowerCase(),
+        response.data.message || 'Registration successful.'
+      );
     } catch (err) {
       setError(
         err.response?.data?.message ||
@@ -45,192 +48,121 @@ function Registration({ onRegistrationSuccess, onShowLogin }) {
     }
   };
 
-  const inputStyle = {
-    display: 'block',
-    width: '100%',
-    boxSizing: 'border-box',
-    padding: '12px',
-    marginBottom: '16px',
-    border: '1px solid #cbd5e1',
-    borderRadius: '6px',
-    fontSize: '14px'
-  };
-
-  const labelStyle = {
-    display: 'block',
-    marginBottom: '6px',
-    fontWeight: '600',
-    color: '#334155',
-    fontSize: '14px'
-  };
-
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#1e3a5f',
-        padding: '20px',
-        boxSizing: 'border-box'
-      }}
-    >
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          background: '#ffffff',
-          padding: '32px',
-          borderRadius: '12px',
-          width: '100%',
-          maxWidth: '390px',
-          boxSizing: 'border-box',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-        }}
-      >
-        <h2
-          style={{
-            marginTop: 0,
-            marginBottom: '8px',
-            textAlign: 'center',
-            color: '#1e3a5f'
-          }}
-        >
-          Smart Maintenance
-        </h2>
-
-        <p
-          style={{
-            textAlign: 'center',
-            color: '#64748b',
-            marginBottom: '26px'
-          }}
-        >
-          Create your account
-        </p>
-
-        {error && (
-          <div
-            role="alert"
-            style={{
-              background: '#fef2f2',
-              color: '#b91c1c',
-              padding: '12px',
-              borderRadius: '6px',
-              marginBottom: '16px',
-              fontSize: '14px'
-            }}
-          >
-            {error}
+    <main className="auth-page">
+      <section className="auth-visual" aria-label="Smart maintenance platform">
+        <img
+          className="auth-technician"
+          src="/maintenance-technician.svg"
+          alt="Illustration of a maintenance technician with tools"
+        />
+        <div className="auth-visual-content">
+          <a className="auth-brand" href="/" aria-label="Smart Maintenance home">
+            <img className="auth-brand-mark" src="/maintenance-logo.svg" alt="" />
+            <span>
+              <strong>Smart Maintenance</strong>
+              <small>ASSET OPERATIONS PLATFORM</small>
+            </span>
+          </a>
+          <div className="auth-story">
+            <p className="auth-eyebrow">A BETTER WAY TO MAINTAIN</p>
+            <h1>Make proactive maintenance part of every day.</h1>
+            <p>
+              Bring your team, equipment, and maintenance plans together in
+              one dependable workspace.
+            </p>
+            <div className="auth-proof">
+              <span className="auth-proof-icon" aria-hidden="true">✓</span>
+              <span>Less guesswork. More uptime.</span>
+            </div>
           </div>
-        )}
+          <div className="auth-visual-badge">
+            <span className="auth-visual-badge-dot" />
+            <span><strong>Maintenance</strong><small>PLANNED WITH PRECISION</small></span>
+          </div>
+        </div>
+      </section>
 
-        <label htmlFor="register-name" style={labelStyle}>
-          Full Name
-        </label>
-        <input
-          id="register-name"
-          type="text"
-          placeholder="Enter your full name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          autoComplete="name"
-          maxLength={100}
-          style={inputStyle}
-          required
-        />
+      <section className="auth-form-side">
+        <form className="auth-card auth-card-register" onSubmit={handleSubmit}>
+          <div className="auth-card-heading">
+            <p className="auth-card-kicker">GET STARTED</p>
+            <h2>Create your workspace account</h2>
+            <p>Set up your profile to start managing maintenance.</p>
+          </div>
 
-        <label htmlFor="register-email" style={labelStyle}>
-          Email Address
-        </label>
-        <input
-          id="register-email"
-          type="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
-          style={inputStyle}
-          required
-        />
+          {error && (
+            <div className="auth-message auth-message-error" role="alert">
+              {error}
+            </div>
+          )}
 
-        <label htmlFor="register-password" style={labelStyle}>
-          Password
-        </label>
-        <input
-          id="register-password"
-          type="password"
-          placeholder="At least 8 characters"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="new-password"
-          minLength={8}
-          maxLength={72}
-          style={inputStyle}
-          required
-        />
+          <label className="auth-label" htmlFor="register-name">Full name</label>
+          <input
+            className="auth-input"
+            id="register-name"
+            type="text"
+            placeholder="Enter your full name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoComplete="name"
+            maxLength={100}
+            required
+          />
 
-        <label htmlFor="confirm-password" style={labelStyle}>
-          Confirm Password
-        </label>
-        <input
-          id="confirm-password"
-          type="password"
-          placeholder="Re-enter your password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          autoComplete="new-password"
-          minLength={8}
-          maxLength={72}
-          style={inputStyle}
-          required
-        />
+          <label className="auth-label" htmlFor="register-email">Email address</label>
+          <input
+            className="auth-input"
+            id="register-email"
+            type="email"
+            placeholder="you@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+          />
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '12px',
-            background: loading ? '#64748b' : '#1e3a5f',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: loading ? 'wait' : 'pointer',
-            fontWeight: 'bold',
-            fontSize: '15px'
-          }}
-        >
-          {loading ? 'Creating account...' : 'Create Account'}
-        </button>
+          <PasswordField
+            id="register-password"
+            label="Password"
+            placeholder="At least 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            minLength={8}
+            maxLength={72}
+            required
+          />
 
-        <p
-          style={{
-            textAlign: 'center',
-            color: '#64748b',
-            fontSize: '14px',
-            marginTop: '22px',
-            marginBottom: 0
-          }}
-        >
-          Already have an account?{' '}
-          <button
-            type="button"
-            onClick={onShowLogin}
-            style={{
-              border: 'none',
-              background: 'none',
-              color: '#1e3a5f',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              padding: 0
-            }}
-          >
-            Sign in
+          <PasswordField
+            id="confirm-password"
+            label="Confirm password"
+            placeholder="Re-enter your password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            autoComplete="new-password"
+            minLength={8}
+            maxLength={72}
+            required
+          />
+
+          <button className="auth-submit" type="submit" disabled={loading}>
+            {loading ? 'Creating account...' : 'Create account'}
+            {!loading && <span aria-hidden="true">→</span>}
           </button>
-        </p>
-      </form>
-    </div>
+
+          <p className="auth-switch">
+            Already have an account?{' '}
+            <button type="button" onClick={onShowLogin}>Sign in</button>
+          </p>
+
+          <p className="auth-security">
+            <span aria-hidden="true">▣</span>
+            Your workspace is protected with secure sign-in.
+          </p>
+        </form>
+      </section>
+    </main>
   );
 }
 

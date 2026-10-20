@@ -1,0 +1,63 @@
+
+const mongoose = require('mongoose');
+
+const maintenanceScheduleSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: [true, 'Schedule title is required'],
+      trim: true,
+      maxlength: 150
+    },
+
+    description: {
+      type: String,
+      trim: true,
+      default: '',
+      maxlength: 2000
+    },
+
+    equipment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Equipment',
+      required: true
+    },
+
+    dueDate: {
+      type: Date,
+      required: [true, 'Due date is required']
+    },
+
+    frequency: {
+      type: String,
+      enum: [
+        'ONCE',
+        'WEEKLY',
+        'MONTHLY',
+        'QUARTERLY',
+        'YEARLY'
+      ],
+      default: 'ONCE'
+    },
+
+    status: {
+      type: String,
+      enum: ['SCHEDULED', 'COMPLETED', 'CANCELLED'],
+      default: 'SCHEDULED'
+    }
+  },
+  {
+    timestamps: true
+  }
+);
+
+maintenanceScheduleSchema.index({
+  equipment: 1,
+  dueDate: 1,
+  status: 1
+});
+
+module.exports = mongoose.model(
+  'MaintenanceSchedule',
+  maintenanceScheduleSchema
+);

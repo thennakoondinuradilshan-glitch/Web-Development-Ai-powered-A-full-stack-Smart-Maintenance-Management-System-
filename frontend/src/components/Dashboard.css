@@ -1,0 +1,206 @@
+.dashboard-page-header {
+  padding: 18px 22px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 28px rgba(12, 25, 43, 0.12);
+  backdrop-filter: blur(14px);
+}
+
+.dashboard-page-header h2 {
+  color: #1e293b;
+}
+
+.dashboard-hero {
+  position: relative;
+  display: flex;
+  min-height: 285px;
+  align-items: center;
+  overflow: hidden;
+  margin-bottom: 24px;
+  padding: 38px clamp(26px, 4vw, 54px);
+  border-radius: 18px;
+  background: rgba(20, 36, 59, 0.8);
+  color: #fff;
+  isolation: isolate;
+}
+
+.dashboard-hero::after {
+  position: absolute;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(12, 25, 43, 0.88) 0%, rgba(12, 25, 43, 0.64) 52%, rgba(12, 25, 43, 0.28) 100%);
+  content: '';
+  inset: 0;
+}
+
+.dashboard-hero-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 520px;
+}
+
+.dashboard-hero-eyebrow {
+  margin: 0 0 12px;
+  color: #a9c8ff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+}
+
+.dashboard-hero-copy h3 {
+  max-width: 470px;
+  margin: 0 0 12px;
+  color: #fff;
+  font-size: clamp(28px, 3.5vw, 42px);
+  font-weight: 750;
+  letter-spacing: -1.4px;
+  line-height: 1.08;
+}
+
+.app-content .dashboard-hero-copy h3 {
+  color: #fff;
+  text-shadow: 0 2px 14px rgba(3, 10, 22, 0.3);
+}
+
+.dashboard-hero-copy > p:not(.dashboard-hero-eyebrow) {
+  max-width: 420px;
+  margin: 0 0 22px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.dashboard-hero-link {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 15px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 0.18s ease, border-color 0.18s ease;
+  backdrop-filter: blur(8px);
+}
+
+.dashboard-hero-link:hover {
+  border-color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dashboard-about {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1.2fr);
+  gap: 24px;
+  align-items: center;
+  margin: 0 0 24px;
+  padding: 18px;
+  border: 1px solid rgba(93, 164, 232, 0.24);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 26px rgba(12, 25, 43, 0.08);
+}
+
+.dashboard-about-images {
+  position: relative;
+  min-height: 175px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #123452;
+}
+
+.dashboard-about-photo {
+  display: block;
+  width: 100%;
+  height: 175px;
+  object-fit: cover;
+  filter: saturate(0.88) contrast(1.04);
+}
+
+.dashboard-about-technician {
+  position: absolute;
+  right: 7%;
+  bottom: -12px;
+  width: 38%;
+  height: 92%;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 8px 12px rgba(2, 13, 24, 0.35));
+}
+
+.dashboard-about-copy h3 {
+  max-width: 490px;
+  margin: 0 0 10px;
+  color: #14243b;
+  font-size: 24px;
+  letter-spacing: -0.7px;
+}
+
+.dashboard-about-copy > p:not(.dashboard-hero-eyebrow) {
+  max-width: 620px;
+  margin: 0;
+  color: #536b83;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.dashboard-about-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 17px;
+}
+
+.dashboard-about-points span {
+  padding: 7px 10px;
+  border: 1px solid #c7d9e8;
+  border-radius: 999px;
+  background: #f4f9fd;
+  color: #315c7e;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.theme-dark .dashboard-about {
+  border-color: rgba(119, 188, 214, 0.28);
+  background: #0d2a42;
+}
+
+.theme-dark .dashboard-about-copy h3 {
+  color: #f0f7ff;
+}
+
+.theme-dark .dashboard-about-copy > p:not(.dashboard-hero-eyebrow) {
+  color: #b7cde2;
+}
+
+.theme-dark .dashboard-about-points span {
+  border-color: rgba(119, 188, 214, 0.26);
+  background: rgba(255, 255, 255, 0.06);
+  color: #bfe4f8;
+}
+
+@media (max-width: 600px) {
+  .dashboard-page-header {
+    padding: 16px;
+  }
+
+  .dashboard-hero {
+    min-height: 340px;
+    align-items: flex-end;
+    padding: 26px 22px 34px;
+  }
+
+  .dashboard-hero-copy h3 {
+    font-size: 31px;
+  }
+
+  .dashboard-about {
+    grid-template-columns: 1fr;
+  }
+}

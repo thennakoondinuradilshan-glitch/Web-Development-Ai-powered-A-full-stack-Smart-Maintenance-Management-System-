@@ -1,6 +1,7 @@
-
 import { useState } from 'react';
 import api from '../api';
+import PasswordField from './PasswordField';
+import './Auth.css';
 
 function Login({
   onLoginSuccess,
@@ -35,174 +36,102 @@ function Login({
     }
   };
 
-  const inputStyle = {
-    display: 'block',
-    width: '100%',
-    boxSizing: 'border-box',
-    padding: '12px',
-    marginBottom: '16px',
-    border: '1px solid #cbd5e1',
-    borderRadius: '6px',
-    fontSize: '14px'
-  };
-
-  const labelStyle = {
-    display: 'block',
-    marginBottom: '6px',
-    fontWeight: '600',
-    color: '#334155',
-    fontSize: '14px'
-  };
-
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#1e3a5f',
-        padding: '20px',
-        boxSizing: 'border-box'
-      }}
-    >
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          background: '#ffffff',
-          padding: '32px',
-          borderRadius: '12px',
-          width: '100%',
-          maxWidth: '360px',
-          boxSizing: 'border-box',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
-        }}
-      >
-        <h2
-          style={{
-            marginTop: 0,
-            textAlign: 'center',
-            color: '#1e3a5f'
-          }}
-        >
-          Smart Maintenance
-        </h2>
-
-        <p
-          style={{
-            textAlign: 'center',
-            color: '#64748b',
-            marginBottom: '26px'
-          }}
-        >
-          Sign in to continue
-        </p>
-
-        {successMessage && (
-          <div
-            role="status"
-            style={{
-              background: '#f0fdf4',
-              color: '#166534',
-              padding: '12px',
-              borderRadius: '6px',
-              marginBottom: '16px',
-              fontSize: '14px'
-            }}
-          >
-            {successMessage}
-          </div>
-        )}
-
-        {error && (
-          <div
-            role="alert"
-            style={{
-              background: '#fef2f2',
-              color: '#b91c1c',
-              padding: '12px',
-              borderRadius: '6px',
-              marginBottom: '16px',
-              fontSize: '14px'
-            }}
-          >
-            {error}
-          </div>
-        )}
-
-        <label htmlFor="login-email" style={labelStyle}>
-          Email
-        </label>
-        <input
-          id="login-email"
-          type="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="username"
-          style={inputStyle}
-          required
+    <main className="auth-page">
+      <section className="auth-visual" aria-label="Smart maintenance platform">
+        <img
+          className="auth-technician"
+          src="/maintenance-technician.svg"
+          alt="Illustration of a maintenance technician with tools"
         />
+        <div className="auth-visual-content">
+          <a className="auth-brand" href="/" aria-label="Smart Maintenance home">
+            <img className="auth-brand-mark" src="/maintenance-logo.svg" alt="" />
+            <span>
+              <strong>Smart Maintenance</strong>
+              <small>ASSET OPERATIONS PLATFORM</small>
+            </span>
+          </a>
+          <div className="auth-story">
+            <p className="auth-eyebrow">BUILT FOR THE PEOPLE WHO KEEP US RUNNING</p>
+            <h1>Every asset has a story. Keep yours moving.</h1>
+            <p>
+              One clear view of your equipment, maintenance work, and what
+              needs attention next.
+            </p>
+            <div className="auth-proof">
+              <span className="auth-proof-icon" aria-hidden="true">✓</span>
+              <span>Reliable operations start with a plan.</span>
+            </div>
+          </div>
+          <div className="auth-visual-badge">
+            <span className="auth-visual-badge-dot" />
+            <span><strong>Maintenance</strong><small>PLANNED WITH PRECISION</small></span>
+          </div>
+        </div>
+      </section>
 
-        <label htmlFor="login-password" style={labelStyle}>
-          Password
-        </label>
-        <input
-          id="login-password"
-          type="password"
-          placeholder="Enter your password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          style={inputStyle}
-          required
-        />
+      <section className="auth-form-side">
+        <form className="auth-card" onSubmit={handleSubmit}>
+          <div className="auth-card-heading">
+            <p className="auth-card-kicker">WELCOME BACK</p>
+            <h2>Sign in to your workspace</h2>
+            <p>Enter your details to access your maintenance operations.</p>
+          </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: '100%',
-            padding: '12px',
-            background: loading ? '#64748b' : '#1e3a5f',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: loading ? 'wait' : 'pointer',
-            fontWeight: 'bold',
-            fontSize: '15px'
-          }}
-        >
-          {loading ? 'Signing in...' : 'Login'}
-        </button>
+          {successMessage && (
+            <div className="auth-message auth-message-success" role="status">
+              {successMessage}
+            </div>
+          )}
 
-        <p
-          style={{
-            textAlign: 'center',
-            color: '#64748b',
-            fontSize: '14px',
-            marginTop: '22px',
-            marginBottom: 0
-          }}
-        >
-          Don't have an account?{' '}
-          <button
-            type="button"
-            onClick={onShowRegister}
-            style={{
-              border: 'none',
-              background: 'none',
-              color: '#1e3a5f',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              padding: 0
-            }}
-          >
-            Create Account
+          {error && (
+            <div className="auth-message auth-message-error" role="alert">
+              {error}
+            </div>
+          )}
+
+          <label className="auth-label" htmlFor="login-email">Email address</label>
+          <input
+            className="auth-input"
+            id="login-email"
+            type="email"
+            placeholder="you@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="username"
+            required
+          />
+
+          <PasswordField
+            id="login-password"
+            label="Password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
+
+          <button className="auth-submit" type="submit" disabled={loading}>
+            {loading ? 'Signing in...' : 'Sign in'}
+            {!loading && <span aria-hidden="true">→</span>}
           </button>
-        </p>
-      </form>
-    </div>
+
+          <p className="auth-switch">
+            New to Smart Maintenance?{' '}
+            <button type="button" onClick={onShowRegister}>
+              Create an account
+            </button>
+          </p>
+
+          <p className="auth-security">
+            <span aria-hidden="true">▣</span>
+            Your workspace is protected with secure sign-in.
+          </p>
+        </form>
+      </section>
+    </main>
   );
 }
 
