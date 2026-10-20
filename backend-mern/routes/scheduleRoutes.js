@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const MaintenanceSchedule = require('../models/MaintenanceSchedule');
 const Equipment = require('../models/Equipment');
 const { requireRole } = require('../middleware/authMiddleware');
+const { TIME_ZONE, getDayBounds } = require('../utils/dateTime');
 
 const router = express.Router();
 
@@ -45,15 +46,14 @@ router.get('/', async (req, res) => {
 router.get('/alerts', async (req, res) => {
   try {
     const now = new Date();
+    const { start: startOfToday, end: startOfTomorrow } = getDayBounds(
+      now,
+      TIME_ZONE
+    );
 
-    const startOfToday = new Date(now);
-    startOfToday.setHours(0, 0, 0, 0);
-
-    const startOfTomorrow = new Date(startOfToday);
-    startOfTomorrow.setDate(startOfTomorrow.getDate() + 1);
-
-    const nextSevenDays = new Date(startOfTomorrow);
-    nextSevenDays.setDate(nextSevenDays.getDate() + 7);
+    const nextSevenDays = new Date(
+      startOfTomorrow.getTime() + 7 * 24 * 60 * 60 * 1000
+    );
 
     const baseQuery = {
       status: 'SCHEDULED'
@@ -200,6 +200,113 @@ router.post('/', requireRole('ADMIN'), async (req, res) => {
     });
   }
 });
+
+// PATCH /api/schedules/:id
+// Only admins can edit schedule details.
+router.patch('/:id', requireRole('ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      description = '',
+      equipment,
+      dueDate,
+      frequency = 'ONCE'
+    } = req.body;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        message: 'Invalid schedule ID'
+      });
+    }
+
+    if (
+      typeof title !== 'string' ||
+      !title.trim() ||
+      title.trim().length > 150 ||
+      !mongoose.isValidObjectId(equipment) ||
+      !dueDate
+    ) {
+      return res.status(400).json({
+        message: 'Title, valid equipment and due date are required'
+      });
+    }
+
+    if (
+      typeof description !== 'string' ||
+      description.length > 2000
+    ) {
+      return res.status(400).json({
+        message: 'Description must be text and no longer than 2000 characters'
+      });
+    }
+
+    if (!FREQUENCIES.includes(frequency)) {
+      return res.status(400).json({
+        message: 'Invalid maintenance frequency'
+      });
+    }
+
+    const parsedDate = new Date(dueDate);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return res.status(400).json({
+        message: 'Invalid due date'
+      });
+    }
+
+    const equipmentExists = await Equipment.exists({
+      _id: equipment
+    });
+
+    if (!equipmentExists) {
+      return res.status(404).json({
+        message: 'Equipment not found'
+      });
+    }
+
+    const schedule = await MaintenanceSchedule.findByIdAndUpdate(
+      id,
+      {
+        $set: {
+          title: title.trim(),
+          description: description.trim(),
+          equipment,
+          dueDate: parsedDate,
+          frequency
+        }
+      },
+      {
+        new: true,
+        runValidators: true
+      }
+    ).populate('equipment', 'name location status');
+
+    if (!schedule) {
+      return res.status(404).json({
+        message: 'Maintenance schedule not found'
+      });
+    }
+
+    return res.json({
+      message: 'Maintenance schedule updated successfully',
+      schedule
+    });
+  } catch (error) {
+    console.error('Edit schedule error:', error.message);
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: error.message
+      });
+    }
+
+    return res.status(500).json({
+      message: 'Failed to update maintenance schedule'
+    });
+  }
+});
+
 // PATCH /api/schedules/:id/status
 // Only admins can change schedule status.
 router.patch(

@@ -8,6 +8,12 @@
 4. From `frontend`, run `npm.cmd run dev`.
 5. Open `http://localhost:5173`.
 
+For safe demo records, run `npm.cmd run seed:demo` from `backend-mern`. It adds
+only missing records whose names start with `Demo` and does not delete or
+overwrite existing data. Optional demo users require both
+`DEMO_SEED_USERS=true` and a user-provided `DEMO_SEED_PASSWORD` (8-72
+characters); never commit that password.
+
 The backend API uses `MONGODB_URI` from `backend-mern/.env`; when it is not set, the safe local default is `mongodb://127.0.0.1:27017/smart_maintenance`.
 
 ## 2. Show the database in MongoDB Compass

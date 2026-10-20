@@ -1,6 +1,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import api from '../api';
+import { getEquipmentImage } from '../maintenanceMedia';
 
 const colors = {
   blue: '#7c3aed',
@@ -63,6 +64,19 @@ function dateLabel(value) {
       });
 }
 
+function colomboDateKey(value = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Colombo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date(value));
+
+  const get = type => parts.find(part => part.type === type)?.value;
+
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
 function getDueState(schedule) {
   if (schedule.status === 'COMPLETED') {
     return {
@@ -81,10 +95,10 @@ function getDueState(schedule) {
   }
 
   const due = new Date(schedule.dueDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const dueKey = colomboDateKey(due);
+  const todayKey = colomboDateKey();
 
-  if (!Number.isNaN(due.getTime()) && due < today) {
+  if (!Number.isNaN(due.getTime()) && dueKey < todayKey) {
     return {
       label: 'OVERDUE',
       color: colors.red,
@@ -94,7 +108,7 @@ function getDueState(schedule) {
 
   if (
     !Number.isNaN(due.getTime()) &&
-    due.toDateString() === today.toDateString()
+    dueKey === todayKey
   ) {
     return {
       label: 'DUE TODAY',
@@ -980,7 +994,24 @@ export default function PreventiveMaintenance({ user }) {
                           borderBottom: '1px solid #edf1f6'
                         }}
                       >
-                        <strong>{schedule.title}</strong>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <img
+                            src={getEquipmentImage(equipmentName)}
+                            alt="Maintenance equipment"
+                            loading="lazy"
+                            onError={event => {
+                              event.currentTarget.src = '/images/industrial-maintenance.jpg';
+                            }}
+                            style={{
+                              width: 48,
+                              height: 42,
+                              objectFit: 'cover',
+                              borderRadius: 8,
+                              flexShrink: 0
+                            }}
+                          />
+                          <strong>{schedule.title}</strong>
+                        </div>
 
                         {schedule.description && (
                           <p

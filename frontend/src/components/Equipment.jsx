@@ -1,6 +1,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../api';
+import { getEquipmentImage } from '../maintenanceMedia';
 
 const EMPTY_FORM = {
   name: '',
@@ -1088,10 +1089,56 @@ function Equipment() {
                 style={{
                   border: `1px solid ${C.border}`,
                   borderRadius: 13,
-                  padding: 19,
+                  overflow: 'hidden',
                   background: C.white
                 }}
               >
+                <div
+                  style={{
+                    height: 112,
+                    background: '#dbeafe',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <img
+                    src={getEquipmentImage(item.name)}
+                    alt="Maintenance equipment environment"
+                    loading="lazy"
+                    onError={event => {
+                      event.currentTarget.src = '/images/industrial-maintenance.jpg';
+                    }}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block'
+                    }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(180deg, rgba(8,26,48,0.04), rgba(8,26,48,0.52))'
+                    }}
+                  />
+                  <span
+                    style={{
+                      position: 'absolute',
+                      left: 14,
+                      bottom: 12,
+                      color: '#fff',
+                      fontSize: 10,
+                      fontWeight: 800,
+                      letterSpacing: 0.8,
+                      textTransform: 'uppercase'
+                    }}
+                  >
+                    Asset condition
+                  </span>
+                </div>
+
+                <div style={{ padding: 19 }}>
                 <div
                   style={{
                     display: 'flex',
@@ -1189,6 +1236,7 @@ function Equipment() {
                       </button>
                     </>
                   )}
+                </div>
                 </div>
               </article>
             ))}

@@ -8,6 +8,7 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../api';
 import './MaintenanceRequests.css';
+import { getEquipmentImage } from '../maintenanceMedia';
 
 const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'];
 const STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED'];
@@ -747,14 +748,30 @@ function MaintenanceRequests({ user: userProp }) {
                     marginBottom: 0
                   }}
                 >
-                  <div style={{
-                    display: 'flex',
+                    <div style={{
+                      display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'flex-start',
                     gap: 16,
                     flexWrap: 'wrap'
                   }}>
-                    <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+                      <img
+                        src={getEquipmentImage(equipmentName(request))}
+                        alt="Maintenance equipment"
+                        loading="lazy"
+                        onError={event => {
+                          event.currentTarget.src = '/images/industrial-maintenance.jpg';
+                        }}
+                        style={{
+                          width: 76,
+                          height: 76,
+                          objectFit: 'cover',
+                          borderRadius: 12,
+                          flexShrink: 0
+                        }}
+                      />
+
+                      <div style={{ flex: '1 1 260px', minWidth: 0 }}>
                       <h4 style={{
                         margin: '0 0 9px',
                         fontSize: 16,
